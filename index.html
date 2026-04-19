@@ -4,109 +4,136 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Matawan Hub Dashboard</title>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/recharts@2.10.0/umd/Recharts.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0d1424; color: #fff; font-family: system-ui, sans-serif; }
-  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0d1424; }
-  ::-webkit-scrollbar-thumb { background: #2a3550; border-radius: 3px; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1424;color:#fff;font-family:system-ui,sans-serif;min-height:100vh}
+.card{background:#1a2035;border-radius:12px;padding:22px}
+.toggle{display:flex;background:#0d1424;border-radius:20px;padding:3px}
+.toggle button{background:transparent;border:none;color:#778ca3;border-radius:16px;padding:4px 12px;cursor:pointer;font-size:12px}
+.toggle button.active{background:#2a3550;color:#E8C547}
+.bar-wrap{background:#0d1424;border-radius:4px;height:6px;margin-top:3px}
+.bar-fill{height:6px;border-radius:4px;transition:width .5s}
+.kpi{border-radius:12px;padding:18px 22px;flex:1;min-width:160px}
+.label{color:#778ca3;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.big-num{font-family:monospace;font-size:26px;font-weight:700;color:#fff}
+.row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.col{display:flex;flex-direction:column;gap:16px;flex:1;min-width:280px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-bottom:18px}
+.sect-title{color:#fff;font-weight:600;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.pill{background:#0d1424;border-radius:8px;padding:8px 14px}
+.pill .pl{color:#778ca3;font-size:10px}
+.pill .pv{font-family:monospace;font-weight:700;font-size:17px}
+.review-item{background:#0d1424;border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.donut-wrap{position:relative;width:160px;height:160px;margin:0 auto 12px}
+.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.chart-bar-group{display:flex;align-items:flex-end;gap:4px;height:120px;margin-top:8px}
+.chart-bar{flex:1;border-radius:4px 4px 0 0;min-width:20px;transition:height .5s;cursor:pointer;position:relative}
+.chart-bar:hover::after{content:attr(data-tip);position:absolute;bottom:105%;left:50%;transform:translateX(-50%);background:#2a3550;color:#fff;padding:4px 8px;border-radius:6px;font-size:11px;white-space:nowrap;z-index:10}
+.xlabels{display:flex;gap:4px;margin-top:4px}
+.xlabels span{flex:1;text-align:center;font-size:10px;color:#778ca3}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useRef } = React;
-const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
+const {useState,useEffect} = React;
 
-const API_URL = 'https://matawan-hub-backend-production.up.railway.app';
-const API_KEY = '4EaSsP5h9W1TddVi0LJmRtxm';
+const COLORS={shipping:'#4F8EF7',uhaul:'#E8C547',mailbox:'#6BCB77',packing:'#FF6B6B',notary:'#C77DFF',printing:'#FF9F43',other:'#778CA3'};
+const LABELS={shipping:'Shipping',uhaul:'U-Haul',mailbox:'Mailbox',packing:'Packing',notary:'Notary',printing:'Printing',other:'Other'};
+const EXP_COLORS=['#FF6B6B','#FF9F43','#C77DFF','#4F8EF7','#6BCB77','#E8C547','#778CA3'];
 
-const COLORS = { shipping:'#4F8EF7', uhaul:'#E8C547', mailbox:'#6BCB77', packing:'#FF6B6B', notary:'#C77DFF', printing:'#FF9F43', other:'#778CA3' };
-const LABELS = { shipping:'Shipping', uhaul:'U-Haul', mailbox:'Mailbox', packing:'Packing', notary:'Notary', printing:'Printing', other:'Other' };
+const MOCK_KPI={revenue:97800,expenses:54600,netProfit:43200,grossMargin:44.2};
+const MOCK_REV=[{key:'shipping',value:38400},{key:'uhaul',value:22100},{key:'mailbox',value:14800},{key:'packing',value:9200},{key:'notary',value:5600},{key:'printing',value:4900},{key:'other',value:2800}];
+const MOCK_EXP=[{name:'Payroll',value:28000},{name:'Rent',value:8500},{name:'UPS/FedEx',value:6200},{name:'U-Haul Fleet',value:4800},{name:'Supplies',value:2100},{name:'Utilities',value:1800},{name:'Other',value:3200}];
 
-const MOCK_KPI = { revenue:97800, expenses:54600, netProfit:43200, grossMargin:44.2 };
-const MOCK_REV = [
-  {key:'shipping',value:38400},{key:'uhaul',value:22100},{key:'mailbox',value:14800},
-  {key:'packing',value:9200},{key:'notary',value:5600},{key:'printing',value:4900},{key:'other',value:2800}
-];
-const MOCK_EXP = [
-  {name:'Payroll',value:28000},{name:'Rent',value:8500},{name:'UPS/FedEx',value:6200},
-  {name:'U-Haul Fleet',value:4800},{name:'Supplies',value:2100},{name:'Utilities',value:1800},{name:'Other',value:3200}
-];
-const EXP_COLORS = ['#FF6B6B','#FF9F43','#C77DFF','#4F8EF7','#6BCB77','#E8C547','#778CA3'];
-
-const CUST_DAILY = [{l:'Mon',n:14,r:28},{l:'Tue',n:18,r:32},{l:'Wed',n:12,r:25},{l:'Thu',n:20,r:38},{l:'Fri',n:24,r:42},{l:'Sat',n:30,r:55},{l:'Sun',n:8,r:18}];
-const CUST_WEEKLY = [{l:'W1',n:62,r:148},{l:'W2',n:74,r:162},{l:'W3',n:58,r:155},{l:'W4',n:80,r:170},{l:'W5',n:70,r:160},{l:'W6',n:90,r:185},{l:'W7',n:66,r:172},{l:'W8',n:78,r:168},{l:'W9',n:82,r:175}];
-const CUST_MONTHLY = [{l:'Aug',n:240,r:580},{l:'Sep',n:265,r:610},{l:'Oct',n:280,r:640},{l:'Nov',n:310,r:670},{l:'Dec',n:350,r:720},{l:'Jan',n:290,r:660},{l:'Feb',n:275,r:635},{l:'Mar',n:320,r:690},{l:'Apr',n:295,r:650}];
-
-const TRF_DAILY = [{l:'Mon',t:42,rev:4800,cps:114},{l:'Tue',t:50,rev:6200,cps:124},{l:'Wed',t:37,rev:4100,cps:110},{l:'Thu',t:58,rev:7400,cps:128},{l:'Fri',t:66,rev:8600,cps:130},{l:'Sat',t:85,rev:11200,cps:132},{l:'Sun',t:26,rev:2900,cps:112}];
-const TRF_MONTHLY = [{l:'Aug',t:820,rev:82000,cps:100},{l:'Sep',t:875,rev:88000,cps:101},{l:'Oct',t:910,rev:92000,cps:101},{l:'Nov',t:960,rev:98000,cps:102},{l:'Dec',t:1100,rev:115000,cps:105},{l:'Jan',t:850,rev:86000,cps:101},{l:'Feb',t:820,rev:83000,cps:101},{l:'Mar',t:960,rev:97000,cps:101},{l:'Apr',t:890,rev:90000,cps:101}];
-
-const REVIEWS_G = { avg:4.8, total:142, dist:[82,36,14,7,3], reviews:[
+const CUST={
+  daily:[{l:'Mon',n:14,r:28},{l:'Tue',n:18,r:32},{l:'Wed',n:12,r:25},{l:'Thu',n:20,r:38},{l:'Fri',n:24,r:42},{l:'Sat',n:30,r:55},{l:'Sun',n:8,r:18}],
+  weekly:[{l:'W1',n:62,r:148},{l:'W2',n:74,r:162},{l:'W3',n:58,r:155},{l:'W4',n:80,r:170},{l:'W5',n:70,r:160},{l:'W6',n:90,r:185},{l:'W7',n:66,r:172}],
+  monthly:[{l:'Aug',n:240,r:580},{l:'Sep',n:265,r:610},{l:'Oct',n:280,r:640},{l:'Nov',n:310,r:670},{l:'Dec',n:350,r:720},{l:'Jan',n:290,r:660},{l:'Feb',n:275,r:635},{l:'Mar',n:320,r:690},{l:'Apr',n:295,r:650}]
+};
+const TRF={
+  daily:[{l:'Mon',t:42,cps:114},{l:'Tue',t:50,cps:124},{l:'Wed',t:37,cps:110},{l:'Thu',t:58,cps:128},{l:'Fri',t:66,cps:130},{l:'Sat',t:85,cps:132},{l:'Sun',t:26,cps:112}],
+  monthly:[{l:'Aug',t:820,cps:100},{l:'Sep',t:875,cps:101},{l:'Oct',t:910,cps:101},{l:'Nov',t:960,cps:102},{l:'Dec',t:1100,cps:105},{l:'Jan',t:850,cps:101},{l:'Feb',t:820,cps:101},{l:'Mar',t:960,cps:101},{l:'Apr',t:890,cps:101}]
+};
+const REVIEWS_G={avg:4.8,total:142,dist:[82,36,14,7,3],reviews:[
   {name:'Sarah M.',rating:5,date:'Apr 12',text:'Always fast and friendly. Best shipping store in town!'},
   {name:'James R.',rating:5,date:'Apr 8',text:'Used U-Haul and notary in one trip. Super convenient.'},
-  {name:'Linda K.',rating:4,date:'Apr 5',text:'Good service, slight wait on Saturday but worth it.'},
-  {name:'Tom B.',rating:3,date:'Mar 28',text:'Prices are fair. Staff could be more organized during busy hours.'}
+  {name:'Linda K.',rating:4,date:'Apr 5',text:'Good service, slight wait on Saturday.'},
+  {name:'Tom B.',rating:3,date:'Mar 28',text:'Prices are fair. Could be more organized during busy hours.'}
 ]};
-const REVIEWS_Y = { avg:4.4, total:67, dist:[38,18,7,3,1], reviews:[
-  {name:'Maria G.',rating:5,date:'Apr 10',text:'Super helpful staff, they packed my fragile items perfectly.'},
-  {name:'Derek F.',rating:4,date:'Apr 3',text:'Great location and good prices on mailbox rental.'},
-  {name:'Priya S.',rating:4,date:'Mar 30',text:'Notary was quick and professional. Will return.'},
+const REVIEWS_Y={avg:4.4,total:67,dist:[38,18,7,3,1],reviews:[
+  {name:'Maria G.',rating:5,date:'Apr 10',text:'Super helpful staff, packed my fragile items perfectly.'},
+  {name:'Derek F.',rating:4,date:'Apr 3',text:'Great location and prices on mailbox rental.'},
+  {name:'Priya S.',rating:4,date:'Mar 30',text:'Notary was quick and professional.'},
   {name:'Nick W.',rating:3,date:'Mar 20',text:'Decent service but long lines on Fridays.'}
 ]};
 
-const fmt = n => '$' + Math.round(n).toLocaleString();
-const fmtK = n => n >= 1000 ? '$' + (n/1000).toFixed(0) + 'k' : fmt(n);
-const ratingColor = r => r >= 5 ? '#6BCB77' : r >= 4 ? '#E8C547' : '#FF6B6B';
+const fmt=n=>'$'+Math.round(n).toLocaleString();
+const fmtK=n=>n>=1000?'$'+(n/1000).toFixed(0)+'k':fmt(n);
+const rc=r=>r>=5?'#6BCB77':r>=4?'#E8C547':'#FF6B6B';
 
-function Toggle({options, value, onChange}) {
-  return <div style={{display:'flex',background:'#0d1424',borderRadius:20,padding:3}}>
-    {options.map(o => <button key={o.k} onClick={()=>onChange(o.k)} style={{
-      background:value===o.k?'#2a3550':'transparent', border:'none',
-      color:value===o.k?'#E8C547':'#778ca3', borderRadius:16, padding:'4px 12px',
-      cursor:'pointer', fontSize:12
-    }}>{o.l}</button>)}
-  </div>;
+function Toggle({options,value,onChange}){
+  return <div className="toggle">{options.map(o=><button key={o.k} className={value===o.k?'active':''} onClick={()=>onChange(o.k)}>{o.l}</button>)}</div>;
 }
 
-function KpiCard({label, value, prefix='$', suffix='', color}) {
-  return <div style={{background:'#1a2035',borderRadius:12,padding:'18px 22px',flex:1,minWidth:170,borderLeft:`4px solid ${color}`}}>
-    <div style={{color:'#778ca3',fontSize:11,textTransform:'uppercase',letterSpacing:1,marginBottom:6}}>{label}</div>
-    <div style={{color:'#fff',fontSize:26,fontFamily:'monospace',fontWeight:700}}>{prefix}{Math.round(value).toLocaleString()}{suffix}</div>
-  </div>;
-}
-
-function RevCard({data}) {
-  const [v,setV] = useState('donut');
-  const total = data.reduce((s,d)=>s+d.value,0);
-  return <div style={{background:'#1a2035',borderRadius:12,padding:22,flex:1}}>
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-      <span style={{color:'#fff',fontWeight:600}}>Revenue by category</span>
-      <Toggle options={[{k:'donut',l:'◕ Chart'},{k:'bars',l:'▬ Bars'}]} value={v} onChange={setV}/>
+function BarChart({data,colorKey,maxVal,height=120}){
+  const max=maxVal||Math.max(...data.map(d=>d.v));
+  return <div>
+    <div className="chart-bar-group" style={{height}}>
+      {data.map((d,i)=><div key={i} className="chart-bar" data-tip={d.tip||d.v}
+        style={{height:`${(d.v/max)*100}%`,background:d.color||'#4F8EF7'}}/>)}
     </div>
-    {v==='donut' ? <>
-      <ResponsiveContainer width="100%" height={180}>
-        <PieChart><Pie data={data.map(d=>({name:LABELS[d.key]||d.key,value:d.value}))} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value">
-          {data.map((d,i)=><Cell key={i} fill={COLORS[d.key]||'#778ca3'}/>)}
-        </Pie><Tooltip formatter={v=>fmt(v)}/></PieChart>
-      </ResponsiveContainer>
-      <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
-        {data.map(d=><div key={d.key} style={{display:'flex',alignItems:'center',gap:4,fontSize:11,color:'#a0aec0'}}>
-          <div style={{width:8,height:8,borderRadius:'50%',background:COLORS[d.key]||'#778ca3'}}/>{LABELS[d.key]||d.key}
-        </div>)}
+    <div className="xlabels">{data.map((d,i)=><span key={i}>{d.l}</span>)}</div>
+  </div>;
+}
+
+function StackedBar({data,height=120}){
+  const maxVal=Math.max(...data.map(d=>d.a+d.b));
+  return <div>
+    <div style={{display:'flex',alignItems:'flex-end',gap:4,height}}>
+      {data.map((d,i)=>{
+        const total=d.a+d.b, pctA=(d.a/maxVal)*100, pctB=(d.b/maxVal)*100;
+        return <div key={i} style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'flex-end',height:'100%'}}>
+          <div style={{height:`${pctA}%`,background:'#6BCB77',borderRadius:'4px 4px 0 0'}}/>
+          <div style={{height:`${pctB}%`,background:'#C77DFF'}}/>
+        </div>;
+      })}
+    </div>
+    <div className="xlabels">{data.map((d,i)=><span key={i}>{d.l}</span>)}</div>
+  </div>;
+}
+
+function KpiCard({label,value,prefix='$',suffix='',color}){
+  return <div className="kpi" style={{borderLeft:`4px solid ${color}`,'--bg':'#1a2035',background:'#1a2035'}}>
+    <div className="label">{label}</div>
+    <div className="big-num">{prefix}{Math.round(value).toLocaleString()}{suffix}</div>
+  </div>;
+}
+
+function RevCard({data}){
+  const [v,setV]=useState('bars');
+  const total=data.reduce((s,d)=>s+d.value,0);
+  return <div className="card">
+    <div className="sect-title">Revenue by category <Toggle options={[{k:'donut',l:'◕ Chart'},{k:'bars',l:'▬ Bars'}]} value={v} onChange={setV}/></div>
+    {v==='bars'?<div>{data.map(d=><div key={d.key} style={{marginBottom:10}}>
+      <div style={{display:'flex',justifyContent:'space-between',fontSize:13}}>
+        <span style={{color:'#a0aec0'}}>{LABELS[d.key]||d.key}</span>
+        <span style={{fontFamily:'monospace',color:'#fff'}}>{fmt(d.value)} <span style={{color:'#778ca3',fontSize:11}}>({((d.value/total)*100).toFixed(0)}%)</span></span>
       </div>
-    </> : <div>{data.map(d=><div key={d.key} style={{marginBottom:8}}>
-      <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
-        <span style={{color:'#a0aec0',fontSize:12}}>{LABELS[d.key]||d.key}</span>
-        <span style={{color:'#fff',fontSize:12,fontFamily:'monospace'}}>{fmt(d.value)} <span style={{color:'#778ca3',fontSize:10}}>({((d.value/total)*100).toFixed(0)}%)</span></span>
-      </div>
-      <div style={{background:'#0d1424',borderRadius:3,height:5}}>
-        <div style={{width:`${(d.value/total)*100}%`,height:5,borderRadius:3,background:COLORS[d.key]||'#778ca3'}}/>
-      </div>
-    </div>)}</div>}
+      <div className="bar-wrap"><div className="bar-fill" style={{width:`${(d.value/total)*100}%`,background:COLORS[d.key]||'#778ca3'}}/></div>
+    </div>)}</div>:<div>
+      {data.map((d,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+        <div style={{width:12,height:12,borderRadius:'50%',background:COLORS[d.key]||'#778ca3',flexShrink:0}}/>
+        <span style={{color:'#a0aec0',fontSize:13,flex:1}}>{LABELS[d.key]||d.key}</span>
+        <span style={{fontFamily:'monospace',color:'#E8C547',fontSize:13}}>{fmt(d.value)}</span>
+        <div style={{width:80,background:'#0d1424',borderRadius:3,height:5}}>
+          <div style={{width:`${(d.value/total)*100}%`,height:5,borderRadius:3,background:COLORS[d.key]||'#778ca3'}}/>
+        </div>
+      </div>)}
+    </div>}
     <div style={{borderTop:'1px solid #2a3550',marginTop:10,paddingTop:8,display:'flex',justifyContent:'space-between'}}>
       <span style={{color:'#778ca3',fontSize:12}}>Total Revenue</span>
       <span style={{color:'#E8C547',fontFamily:'monospace',fontWeight:700}}>{fmt(total)}</span>
@@ -114,34 +141,27 @@ function RevCard({data}) {
   </div>;
 }
 
-function ExpCard({data}) {
-  const [v,setV] = useState('bars');
-  const total = data.reduce((s,d)=>s+d.value,0);
-  return <div style={{background:'#1a2035',borderRadius:12,padding:22,flex:1}}>
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-      <span style={{color:'#fff',fontWeight:600}}>Expense breakdown</span>
-      <Toggle options={[{k:'donut',l:'◕ Chart'},{k:'bars',l:'▬ Bars'}]} value={v} onChange={setV}/>
-    </div>
-    {v==='donut' ? <>
-      <ResponsiveContainer width="100%" height={180}>
-        <PieChart><Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value">
-          {data.map((_,i)=><Cell key={i} fill={EXP_COLORS[i%7]}/>)}
-        </Pie><Tooltip formatter={v=>fmt(v)}/></PieChart>
-      </ResponsiveContainer>
-      <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
-        {data.map((d,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:4,fontSize:11,color:'#a0aec0'}}>
-          <div style={{width:8,height:8,borderRadius:'50%',background:EXP_COLORS[i%7]}}/>{d.name}
-        </div>)}
+function ExpCard({data}){
+  const [v,setV]=useState('bars');
+  const total=data.reduce((s,d)=>s+d.value,0);
+  return <div className="card">
+    <div className="sect-title">Expense breakdown <Toggle options={[{k:'donut',l:'◕ Chart'},{k:'bars',l:'▬ Bars'}]} value={v} onChange={setV}/></div>
+    {v==='bars'?<div>{data.map((d,i)=><div key={i} style={{marginBottom:10}}>
+      <div style={{display:'flex',justifyContent:'space-between',fontSize:13}}>
+        <span style={{color:'#a0aec0'}}>{d.name}</span>
+        <span style={{fontFamily:'monospace',color:'#fff'}}>{fmt(d.value)} <span style={{color:'#778ca3',fontSize:11}}>({((d.value/total)*100).toFixed(0)}%)</span></span>
       </div>
-    </> : <div>{data.map((d,i)=><div key={i} style={{marginBottom:8}}>
-      <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
-        <span style={{color:'#a0aec0',fontSize:12}}>{d.name}</span>
-        <span style={{color:'#fff',fontSize:12,fontFamily:'monospace'}}>{fmt(d.value)} <span style={{color:'#778ca3',fontSize:10}}>({((d.value/total)*100).toFixed(0)}%)</span></span>
-      </div>
-      <div style={{background:'#0d1424',borderRadius:3,height:5}}>
-        <div style={{width:`${(d.value/total)*100}%`,height:5,borderRadius:3,background:EXP_COLORS[i%7]}}/>
-      </div>
-    </div>)}</div>}
+      <div className="bar-wrap"><div className="bar-fill" style={{width:`${(d.value/total)*100}%`,background:EXP_COLORS[i%7]}}/></div>
+    </div>)}</div>:<div>
+      {data.map((d,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+        <div style={{width:12,height:12,borderRadius:'50%',background:EXP_COLORS[i%7],flexShrink:0}}/>
+        <span style={{color:'#a0aec0',fontSize:13,flex:1}}>{d.name}</span>
+        <span style={{fontFamily:'monospace',color:'#FF6B6B',fontSize:13}}>{fmt(d.value)}</span>
+        <div style={{width:80,background:'#0d1424',borderRadius:3,height:5}}>
+          <div style={{width:`${(d.value/total)*100}%`,height:5,borderRadius:3,background:EXP_COLORS[i%7]}}/>
+        </div>
+      </div>)}
+    </div>}
     <div style={{borderTop:'1px solid #2a3550',marginTop:10,paddingTop:8,display:'flex',justifyContent:'space-between'}}>
       <span style={{color:'#778ca3',fontSize:12}}>Total Expenses</span>
       <span style={{color:'#FF6B6B',fontFamily:'monospace',fontWeight:700}}>{fmt(total)}</span>
@@ -149,30 +169,10 @@ function ExpCard({data}) {
   </div>;
 }
 
-function Annualized({actual,goal}) {
-  const pct = Math.min((actual/goal)*100,100);
-  const onTrack = actual/goal >= (new Date().getMonth()+1)/12;
-  return <div style={{background:'#1a2035',borderRadius:12,padding:'18px 24px',marginBottom:18}}>
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-      <span style={{color:'#fff',fontWeight:600}}>Total Revenue Annualized</span>
-      <span style={{background:onTrack?'#1a3a2a':'#3a1a1a',color:onTrack?'#6BCB77':'#FF6B6B',borderRadius:20,padding:'3px 12px',fontSize:12}}>
-        {onTrack?'✓ On Track':'⚠ Behind Pace'}
-      </span>
-    </div>
-    <div style={{background:'#0d1424',borderRadius:6,height:12,marginBottom:8}}>
-      <div style={{width:`${pct}%`,height:'100%',borderRadius:6,background:onTrack?'#6BCB77':'#FF6B6B'}}/>
-    </div>
-    <div style={{display:'flex',justifyContent:'space-between',marginTop:10}}>
-      <div><div style={{color:'#778ca3',fontSize:11}}>Actual</div><div style={{color:'#E8C547',fontFamily:'monospace',fontWeight:700,fontSize:20}}>{fmtK(actual)}</div></div>
-      <div style={{textAlign:'right'}}><div style={{color:'#778ca3',fontSize:11}}>Goal</div><div style={{color:'#4F8EF7',fontFamily:'monospace',fontWeight:700,fontSize:20}}>{fmtK(goal)}</div></div>
-    </div>
-  </div>;
-}
-
-function GrossMargin({revenue,expenses}) {
-  const profit = revenue-expenses;
-  const pct = ((profit/revenue)*100).toFixed(1);
-  return <div style={{background:'#1a2035',borderRadius:12,padding:22,marginBottom:18}}>
+function GrossMargin({revenue,expenses}){
+  const profit=revenue-expenses;
+  const pct=((profit/revenue)*100).toFixed(1);
+  return <div className="card" style={{marginBottom:18}}>
     <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}>
       <span style={{color:'#fff',fontWeight:600}}>Gross Margin</span>
       <span style={{color:'#E8C547',fontFamily:'monospace',fontWeight:700}}>{pct}%</span>
@@ -187,56 +187,65 @@ function GrossMargin({revenue,expenses}) {
   </div>;
 }
 
-function CustomerChart() {
-  const [p,setP] = useState('daily');
-  const data = p==='daily'?CUST_DAILY:p==='weekly'?CUST_WEEKLY:CUST_MONTHLY;
-  const totN = data.reduce((s,d)=>s+d.n,0), totR = data.reduce((s,d)=>s+d.r,0);
-  const retPct = ((totR/(totN+totR))*100).toFixed(0);
-  return <div style={{background:'#1a2035',borderRadius:12,padding:22}}>
+function Annualized({actual,goal}){
+  const pct=Math.min((actual/goal)*100,100);
+  const onTrack=actual/goal>=(new Date().getMonth()+1)/12;
+  return <div className="card" style={{marginBottom:18}}>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-      <span style={{color:'#fff',fontWeight:600}}>New vs. Returning</span>
-      <Toggle options={[{k:'daily',l:'Daily'},{k:'weekly',l:'Weekly'},{k:'monthly',l:'Monthly'}]} value={p} onChange={setP}/>
+      <span style={{color:'#fff',fontWeight:600}}>Total Revenue Annualized</span>
+      <span style={{background:onTrack?'#1a3a2a':'#3a1a1a',color:onTrack?'#6BCB77':'#FF6B6B',borderRadius:20,padding:'3px 12px',fontSize:12}}>{onTrack?'✓ On Track':'⚠ Behind Pace'}</span>
     </div>
-    <div style={{display:'flex',gap:10,marginBottom:12}}>
-      <div style={{background:'#0d1424',borderRadius:8,padding:'8px 14px',flex:1}}><div style={{color:'#778ca3',fontSize:10}}>New</div><div style={{color:'#6BCB77',fontFamily:'monospace',fontWeight:700,fontSize:18}}>{totN.toLocaleString()}</div></div>
-      <div style={{background:'#0d1424',borderRadius:8,padding:'8px 14px',flex:1}}><div style={{color:'#778ca3',fontSize:10}}>Returning</div><div style={{color:'#C77DFF',fontFamily:'monospace',fontWeight:700,fontSize:18}}>{totR.toLocaleString()}</div></div>
-      <div style={{background:'#0d1424',borderRadius:8,padding:'8px 14px',flex:1}}><div style={{color:'#778ca3',fontSize:10}}>Retention</div><div style={{color:'#E8C547',fontFamily:'monospace',fontWeight:700,fontSize:18}}>{retPct}%</div></div>
+    <div style={{background:'#0d1424',borderRadius:6,height:12,marginBottom:8}}>
+      <div style={{width:`${pct}%`,height:'100%',borderRadius:6,background:onTrack?'#6BCB77':'#FF6B6B'}}/>
     </div>
-    <ResponsiveContainer width="100%" height={160}>
-      <BarChart data={data} margin={{top:0,right:0,left:-20,bottom:0}}>
-        <XAxis dataKey="l" tick={{fill:'#778ca3',fontSize:11}} axisLine={false} tickLine={false}/>
-        <YAxis tick={{fill:'#778ca3',fontSize:11}} axisLine={false} tickLine={false}/>
-        <Tooltip contentStyle={{background:'#1a2035',border:'none',borderRadius:8,color:'#fff'}}/>
-        <Bar dataKey="r" stackId="a" fill="#C77DFF" name="Returning"/>
-        <Bar dataKey="n" stackId="a" fill="#6BCB77" radius={[4,4,0,0]} name="New"/>
-      </BarChart>
-    </ResponsiveContainer>
+    <div style={{display:'flex',justifyContent:'space-between',marginTop:10}}>
+      <div><div style={{color:'#778ca3',fontSize:11}}>Actual</div><div style={{color:'#E8C547',fontFamily:'monospace',fontWeight:700,fontSize:20}}>{fmtK(actual)}</div></div>
+      <div style={{textAlign:'right'}}><div style={{color:'#778ca3',fontSize:11}}>Goal</div><div style={{color:'#4F8EF7',fontFamily:'monospace',fontWeight:700,fontSize:20}}>{fmtK(goal)}</div></div>
+    </div>
   </div>;
 }
 
-function ReviewsCard() {
-  const [p,setP] = useState('google');
-  const d = p==='google'?REVIEWS_G:REVIEWS_Y;
-  return <div style={{background:'#1a2035',borderRadius:12,padding:22}}>
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-      <span style={{color:'#fff',fontWeight:600}}>Customer Reviews</span>
-      <Toggle options={[{k:'google',l:'Google'},{k:'yelp',l:'Yelp'}]} value={p} onChange={setP}/>
+function CustomerChart(){
+  const [p,setP]=useState('daily');
+  const data=CUST[p];
+  const totN=data.reduce((s,d)=>s+d.n,0),totR=data.reduce((s,d)=>s+d.r,0);
+  const retPct=((totR/(totN+totR))*100).toFixed(0);
+  const maxVal=Math.max(...data.map(d=>d.n+d.r));
+  return <div className="card">
+    <div className="sect-title">New vs. Returning <Toggle options={[{k:'daily',l:'Daily'},{k:'weekly',l:'Weekly'},{k:'monthly',l:'Monthly'}]} value={p} onChange={setP}/></div>
+    <div style={{display:'flex',gap:8,marginBottom:12}}>
+      <div className="pill" style={{flex:1}}><div className="pl">New</div><div className="pv" style={{color:'#6BCB77'}}>{totN.toLocaleString()}</div></div>
+      <div className="pill" style={{flex:1}}><div className="pl">Returning</div><div className="pv" style={{color:'#C77DFF'}}>{totR.toLocaleString()}</div></div>
+      <div className="pill" style={{flex:1}}><div className="pl">Retention</div><div className="pv" style={{color:'#E8C547'}}>{retPct}%</div></div>
     </div>
+    <StackedBar data={data.map(d=>({l:d.l,a:d.n,b:d.r}))} height={130}/>
+    <div style={{display:'flex',gap:12,marginTop:8}}>
+      <div style={{display:'flex',alignItems:'center',gap:4,fontSize:11,color:'#a0aec0'}}><div style={{width:8,height:8,background:'#6BCB77',borderRadius:2}}/>New</div>
+      <div style={{display:'flex',alignItems:'center',gap:4,fontSize:11,color:'#a0aec0'}}><div style={{width:8,height:8,background:'#C77DFF',borderRadius:2}}/>Returning</div>
+    </div>
+  </div>;
+}
+
+function ReviewsCard(){
+  const [p,setP]=useState('google');
+  const d=p==='google'?REVIEWS_G:REVIEWS_Y;
+  return <div className="card">
+    <div className="sect-title">Customer Reviews <Toggle options={[{k:'google',l:'Google'},{k:'yelp',l:'Yelp'}]} value={p} onChange={setP}/></div>
     <div style={{display:'flex',gap:14,marginBottom:12,alignItems:'center'}}>
       <div style={{textAlign:'center'}}>
         <div style={{color:'#E8C547',fontSize:32,fontFamily:'monospace',fontWeight:700}}>{d.avg}</div>
         <div style={{color:'#E8C547',fontSize:16}}>★★★★★</div>
         <div style={{color:'#778ca3',fontSize:11}}>{d.total} reviews</div>
       </div>
-      <div style={{flex:1}}>{d.dist.map((cnt,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:5,marginBottom:3}}>
+      <div style={{flex:1}}>{d.dist.map((cnt,i)=><div key={i} style={{display:'flex',alignItems:'center',gap:5,marginBottom:4}}>
         <span style={{color:'#778ca3',fontSize:11,width:10}}>{5-i}</span>
         <div style={{flex:1,background:'#0d1424',borderRadius:3,height:5}}>
           <div style={{width:`${(cnt/d.total)*100}%`,height:5,borderRadius:3,background:'#E8C547'}}/>
         </div>
       </div>)}</div>
     </div>
-    <div style={{display:'flex',flexDirection:'column',gap:7,maxHeight:200,overflowY:'auto'}}>
-      {d.reviews.map((r,i)=><div key={i} style={{background:'#0d1424',borderRadius:8,padding:'8px 10px',borderLeft:`3px solid ${ratingColor(r.rating)}`}}>
+    <div style={{maxHeight:200,overflowY:'auto'}}>
+      {d.reviews.map((r,i)=><div key={i} style={{background:'#0d1424',borderRadius:8,padding:'8px 10px',marginBottom:7,borderLeft:`3px solid ${rc(r.rating)}`}}>
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
           <span style={{color:'#fff',fontSize:12,fontWeight:600}}>{r.name}</span>
           <span style={{color:'#778ca3',fontSize:11}}>{r.date}</span>
@@ -247,75 +256,68 @@ function ReviewsCard() {
   </div>;
 }
 
-function TrafficChart() {
-  const [p,setP] = useState('daily');
-  const data = p==='daily'?TRF_DAILY:TRF_MONTHLY;
-  const avgCPS = Math.round(data.reduce((s,d)=>s+d.cps,0)/data.length);
-  const bestCPS = Math.min(...data.map(d=>d.cps));
-  const worstCPS = Math.max(...data.map(d=>d.cps));
-  return <div style={{background:'#1a2035',borderRadius:12,padding:22}}>
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-      <span style={{color:'#fff',fontWeight:600}}>Transactions & Cost Per Sale</span>
-      <Toggle options={[{k:'daily',l:'Daily'},{k:'monthly',l:'Monthly'}]} value={p} onChange={setP}/>
-    </div>
+function TrafficChart(){
+  const [p,setP]=useState('daily');
+  const data=TRF[p];
+  const maxT=Math.max(...data.map(d=>d.t));
+  const avgCPS=Math.round(data.reduce((s,d)=>s+d.cps,0)/data.length);
+  const bestCPS=Math.min(...data.map(d=>d.cps));
+  const worstCPS=Math.max(...data.map(d=>d.cps));
+  return <div className="card">
+    <div className="sect-title">Transactions & CPS <Toggle options={[{k:'daily',l:'Daily'},{k:'monthly',l:'Monthly'}]} value={p} onChange={setP}/></div>
     <div style={{display:'flex',gap:8,marginBottom:12}}>
-      <div style={{background:'#0d1424',borderRadius:8,padding:'7px 12px'}}><div style={{color:'#778ca3',fontSize:10}}>Avg CPS</div><div style={{color:'#E8C547',fontFamily:'monospace',fontWeight:700}}>${avgCPS}</div></div>
-      <div style={{background:'#0d1424',borderRadius:8,padding:'7px 12px'}}><div style={{color:'#778ca3',fontSize:10}}>Best</div><div style={{color:'#6BCB77',fontFamily:'monospace',fontWeight:700}}>${bestCPS}</div></div>
-      <div style={{background:'#0d1424',borderRadius:8,padding:'7px 12px'}}><div style={{color:'#778ca3',fontSize:10}}>Worst</div><div style={{color:'#FF6B6B',fontFamily:'monospace',fontWeight:700}}>${worstCPS}</div></div>
+      <div className="pill"><div className="pl">Avg CPS</div><div className="pv" style={{color:'#E8C547'}}>${avgCPS}</div></div>
+      <div className="pill"><div className="pl">Best</div><div className="pv" style={{color:'#6BCB77'}}>${bestCPS}</div></div>
+      <div className="pill"><div className="pl">Worst</div><div className="pv" style={{color:'#FF6B6B'}}>${worstCPS}</div></div>
     </div>
-    <ResponsiveContainer width="100%" height={160}>
-      <BarChart data={data} margin={{top:0,right:0,left:-20,bottom:0}}>
-        <XAxis dataKey="l" tick={{fill:'#778ca3',fontSize:11}} axisLine={false} tickLine={false}/>
-        <YAxis tick={{fill:'#778ca3',fontSize:11}} axisLine={false} tickLine={false}/>
-        <Tooltip contentStyle={{background:'#1a2035',border:'none',borderRadius:8,color:'#fff'}}/>
-        <Bar dataKey="t" fill="#4F8EF7" radius={[4,4,0,0]} name="Transactions"/>
-      </BarChart>
-    </ResponsiveContainer>
+    <BarChart data={data.map(d=>({l:d.l,v:d.t,color:'#4F8EF7',tip:`${d.t} txns · CPS $${d.cps}`}))} height={130}/>
   </div>;
 }
 
-function App() {
-  const [period,setPeriod] = useState('month');
-  const [store,setStore] = useState('matawan');
-  const [liveData,setLiveData] = useState(null);
-  const [syncing,setSyncing] = useState(false);
-  const [lastSync,setLastSync] = useState(null);
+function App(){
+  const [period,setPeriod]=useState('month');
+  const [store,setStore]=useState('matawan');
+  const [liveData,setLiveData]=useState(null);
+  const [syncing,setSyncing]=useState(false);
+  const [lastSync,setLastSync]=useState(null);
 
   useEffect(()=>{
+    const API_URL='https://matawan-hub-backend-production.up.railway.app';
+    const API_KEY='4EaSsP5h9W1TddVi0LJmRtxm';
     setSyncing(true);
-    const h = {'x-api-key':API_KEY};
+    const h={'x-api-key':API_KEY};
     Promise.all([
       fetch(`${API_URL}/api/dashboard/summary?period=${period}`,{headers:h}).then(r=>r.json()).catch(()=>null),
       fetch(`${API_URL}/api/dashboard/revenue/1?period=${period}`,{headers:h}).then(r=>r.json()).catch(()=>null),
       fetch(`${API_URL}/api/dashboard/expenses/1?period=${period}`,{headers:h}).then(r=>r.json()).catch(()=>null),
     ]).then(([summary,revenue,expenses])=>{
-      if(summary&&revenue&&expenses){ setLiveData({summary,revenue,expenses}); setLastSync(new Date()); }
+      if(summary&&revenue&&expenses){setLiveData({summary,revenue,expenses});setLastSync(new Date());}
     }).finally(()=>setSyncing(false));
   },[period]);
 
-  const kpi = liveData?.summary || MOCK_KPI;
-  const rev = liveData?.revenue || MOCK_REV;
-  const exp = liveData?.expenses || MOCK_EXP;
+  const kpi=liveData?.summary||MOCK_KPI;
+  const rev=liveData?.revenue||MOCK_REV;
+  const exp=liveData?.expenses||MOCK_EXP;
 
-  return <div style={{padding:22,maxWidth:1400,margin:'0 auto'}}>
+  return <div style={{padding:20,maxWidth:1400,margin:'0 auto'}}>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18,flexWrap:'wrap',gap:10}}>
-      <div style={{display:'flex',gap:8}}>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
         {['matawan','aberdeen'].map(s=><button key={s} onClick={()=>setStore(s)} style={{
-          background:store===s?'#2a3550':'transparent', border:`1px solid ${store===s?'#E8C547':'#2a3550'}`,
-          color:store===s?'#E8C547':'#778ca3', borderRadius:20, padding:'4px 14px', cursor:'pointer', fontSize:13
+          background:store===s?'#2a3550':'transparent',border:`1px solid ${store===s?'#E8C547':'#2a3550'}`,
+          color:store===s?'#E8C547':'#778ca3',borderRadius:20,padding:'4px 14px',cursor:'pointer',fontSize:13
         }}>{s==='matawan'?'Matawan Hub':'Aberdeen'}</button>)}
         <button style={{background:'transparent',border:'1px dashed #2a3550',color:'#778ca3',borderRadius:20,padding:'4px 14px',cursor:'pointer',fontSize:13}}>+ Add Store</button>
       </div>
-      <div style={{display:'flex',gap:12,alignItems:'center'}}>
+      <div style={{display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}>
         <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#778ca3'}}>
-          <div style={{width:8,height:8,borderRadius:'50%',background:syncing?'#E8C547':'#6BCB77',boxShadow:`0 0 6px ${syncing?'#E8C547':'#6BCB77'}`}}/>
-          {lastSync?`Synced ${lastSync.toLocaleTimeString()}`:syncing?'Syncing…':'Mock data'}
+          <div style={{width:8,height:8,borderRadius:'50%',background:syncing?'#E8C547':'#6BCB77'}}/>
+          {lastSync?`Synced ${lastSync.toLocaleTimeString()}`:syncing?'Syncing…':'Mock data — QB sync pending'}
         </div>
         <Toggle options={[{k:'day',l:'Today'},{k:'week',l:'Week'},{k:'month',l:'Month'},{k:'quarter',l:'Quarter'},{k:'year',l:'Year'}]} value={period} onChange={setPeriod}/>
       </div>
     </div>
 
-    <div style={{display:'flex',gap:14,marginBottom:18,flexWrap:'wrap'}}>
+    <div className="row">
       <KpiCard label="Total Revenue" value={kpi.revenue||kpi.total_revenue||0} color="#4F8EF7"/>
       <KpiCard label="Total Expenses" value={kpi.expenses||kpi.total_expenses||0} color="#FF6B6B"/>
       <KpiCard label="Net Profit" value={kpi.netProfit||kpi.net_profit||0} color="#6BCB77"/>
@@ -325,12 +327,12 @@ function App() {
     <GrossMargin revenue={kpi.revenue||kpi.total_revenue||MOCK_KPI.revenue} expenses={kpi.expenses||kpi.total_expenses||MOCK_KPI.expenses}/>
     <Annualized actual={125000} goal={500000}/>
 
-    <div style={{display:'flex',gap:18,marginBottom:18,flexWrap:'wrap'}}>
+    <div className="row">
       <RevCard data={rev}/>
       <ExpCard data={exp}/>
     </div>
 
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:18}}>
+    <div className="grid3">
       <CustomerChart/>
       <ReviewsCard/>
       <TrafficChart/>
